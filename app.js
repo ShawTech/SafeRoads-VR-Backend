@@ -4,11 +4,17 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var fs = require('fs');
+var cmd = require('node-cmd');
+
 
 var index = require('./routes/index');
 var users = require('./routes/users');
 
 var app = express();
+const port = process.env.PORT || 3456;
+
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -24,6 +30,52 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
 app.use('/users', users);
+
+// Get panorama of streetview.
+app.get('/streetview/panorama', function(req, res) {
+	console.log(req.query);
+	var lat = req.query.lat;
+	var lng = req.query.lng;
+
+	if (lat === undefined || lng === undefined) {
+		return res.status(410).json({'path': '', 'error': 'lat lang undefined'});
+	}
+
+	var fileName = 'public/images/' + lat + lng + '.png';
+
+	if (fs.existsSync(fileName)) {
+			return res.status(200).json({'path': fileName, 'created': 'cached'});
+	}
+	var runThis = 'extract-streetview ' + lat + ',' + lng + ' -z 3 > ' + fileName;
+	cmd.get(runThis,
+		function(err, data, stderr) {
+			console.log('Done ' + runThis);
+
+			if (err) {
+				fs.unlink(fileName, function(error) {
+					if (error) {
+						console.log(error);
+					}
+				});
+				return res.status(410).json({'path': '', 'error': 'Could not decode lat lang'});
+			}
+
+			const fileSizeInMb = fs.statSync(fileName).size / 1000000.0;
+			console.log('file size: ' + fileSizeInMb);
+			if (fileSizeInMb < 1.5) {
+				fs.unlink(fileName, function(error) {
+					if (error) {
+						console.log(error);
+					}
+				});
+				return res.status(410).json({'path': '', 'error': 'Invalid panorama for lat ' + lat + ', long ' + lng});
+			}
+
+			return res.status(200).json({'path': fileName, 'created': true});
+		}
+	);
+
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -43,4 +95,6 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+app.listen(port, () => {
+	console.log("Server running on port " + port);
+});
