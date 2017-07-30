@@ -31,6 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', index);
 app.use('/users', users);
 
+
 // Get panorama of streetview.
 app.get('/streetview/panorama', function(req, res) {
 	console.log(req.query);
@@ -38,15 +39,15 @@ app.get('/streetview/panorama', function(req, res) {
 	var lng = req.query.lng;
 
 	if (lat === undefined || lng === undefined) {
-		return res.status(410).json({'path': '', 'error': 'lat lang undefined'});
+		return res.status(410).json({'path': '', 'created': false, 'error': 'lat lang undefined'});
 	}
 
 	var fileName = 'public/images/' + lat + lng + '.png';
 
 	if (fs.existsSync(fileName)) {
-			return res.status(200).json({'path': fileName, 'created': 'cached'});
+			return res.status(200).json({'path': fileName, 'created': 'cached', 'error': false});
 	}
-	var runThis = 'extract-streetview ' + lat + ',' + lng + ' -z 3 > ' + fileName;
+	var runThis = 'extract-streetview ' + lat + ',' + lng + ' -z 4 > ' + fileName;
 	cmd.get(runThis,
 		function(err, data, stderr) {
 			console.log('Done ' + runThis);
@@ -57,7 +58,7 @@ app.get('/streetview/panorama', function(req, res) {
 						console.log(error);
 					}
 				});
-				return res.status(410).json({'path': '', 'error': 'Could not decode lat lang'});
+				return res.status(410).json({'path': '', 'created': false, 'error': 'Could not decode lat lang'});
 			}
 
 			const fileSizeInMb = fs.statSync(fileName).size / 1000000.0;
@@ -68,10 +69,10 @@ app.get('/streetview/panorama', function(req, res) {
 						console.log(error);
 					}
 				});
-				return res.status(410).json({'path': '', 'error': 'Invalid panorama for lat ' + lat + ', long ' + lng});
+				return res.status(410).json({'path': '', 'created': false, 'error': 'Invalid panorama for lat ' + lat + ', long ' + lng});
 			}
 
-			return res.status(200).json({'path': fileName, 'created': true});
+			return res.status(200).json({'path': fileName, 'created': true, 'error': false});
 		}
 	);
 
