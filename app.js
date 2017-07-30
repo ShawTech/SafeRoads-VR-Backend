@@ -31,6 +31,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', index);
 app.use('/users', users);
 
+app.get('/streetview/panorama/list', function(req, res) {
+	fs.readdir("public/images", function(err, items) {
+    	console.log(items);
+    	return res.json({'items': items});
+});
+
+});
 
 // Get panorama of streetview.
 app.get('/streetview/panorama', function(req, res) {
